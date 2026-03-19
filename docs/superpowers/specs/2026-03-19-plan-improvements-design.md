@@ -2,7 +2,7 @@
 
 **Date**: 2026-03-19
 **Scope**: Surgical fixes to the NODEBLE implementation plan — resolve document contradictions, add missing technical sessions, add pre-flight safety checklist.
-**Approach**: Fix what's wrong without restructuring. Update 4 existing docs, add 4 sessions, add 1 checklist.
+**Approach**: Fix what's wrong without restructuring. Update 8 existing docs, add 4 sessions, add 1 checklist.
 **Note**: Line numbers reference the documents as of 2026-03-19. Use surrounding text context to locate sections if line numbers have drifted.
 
 ---
@@ -11,13 +11,15 @@
 
 ### 1.1 Doc 05 — Architecture Draft
 
-**Problem**: Contains 5+ pages of Tauri lifecycle details (Rust entry point, .dmg packaging, tray icon behavior) that are obsolete after the web-only decision.
+**Problem**: Contains Tauri content throughout — the system overview diagram (lines 7-51) shows everything nested inside a "Tauri Desktop Shell," `main.py` references "Tauri lifecycle hooks," the project structure includes `src-tauri/`, `build.sh` says "Build Tauri app (.dmg, .msi)," and the Tauri Lifecycle section (lines 617-643) describes Rust entry points and tray icon behavior. All obsolete after the web-only decision.
 
 **Changes**:
+- Replace the **system overview diagram** (lines 7-51) with a web-architecture diagram showing: Browser → Nginx (static files + reverse proxy) → FastAPI backend (port 8721) → Core Layer (broker adapter, risk engine, state manager). Two deployment modes clearly labeled: Phase 1 (headless, systemd + Telegram only, no Nginx/React) and Phase 2 (Nginx + React dashboard + FastAPI)
+- Remove `src-tauri/` from the project structure, replace with `deploy/` containing: `nginx.conf`, `nodeble.service` (systemd unit), `deploy.sh`
+- Update `main.py` description: remove "Tauri lifecycle hooks," replace with "FastAPI app entry point"
+- Update `build.sh` description: remove "Build Tauri app (.dmg, .msi)," replace with "Build frontend assets"
 - Remove the "Tauri Lifecycle" section (lines 617-643)
-- Remove `src-tauri/` from the project structure
-- Replace with a "Web Deployment" section describing: Nginx serves React static files, reverse-proxies `/api/*` to FastAPI on port 8721, systemd manages the backend process
-- Replace `src-tauri/` in project structure with `deploy/` containing: `nginx.conf`, `nodeble.service` (systemd unit), `deploy.sh`
+- Replace with a "Web Deployment" section describing: Nginx serves React static files, reverse-proxies `/api/*` to FastAPI on port 8721, systemd manages the backend process. Explicitly note: Phase 1 runs headless (systemd only, no Nginx/React — Telegram is the only interface). Phase 2 adds Nginx + React dashboard.
 - Keep all other sections (DB schema, data flows, broker adapter, strategy protocol, scan/manage cycles) — these are still valid regardless of delivery mechanism
 
 ### 1.2 Doc 06 — MVP Definition
@@ -25,11 +27,15 @@
 **Problem**: Describes a founder-hosted model where friends send API credentials to the founder. Contradicts credential sovereignty principle established in Docs 09, 11, and 16. The contradiction appears in multiple sections: the MVP Goal, the user experience flow, and the "What happens on OUR side" block.
 
 **Changes**:
-- Rewrite the **MVP Goal** section (lines 12-14):
+- Rewrite the **MVP hypothesis** (line 12): Remove *"hosted on our infrastructure"*. Replace with: *"Can we get 5 users to self-deploy and run our automated iron condor system with real money on their own VPS, and are at least 2 willing to pay for it?"*
+- Rewrite the **MVP Goal** section (lines 14, 32):
   - Remove: *"We are running our proven Iron Condor Factory on our own servers for 5 friends who trust us with their Tiger API keys"*
   - Replace with: *"We provide a deploy-ready Iron Condor Factory that 5 friends can run on their own Vultr VPS with their own Tiger API credentials"*
+  - Remove line 32: *"The MVP is Tiger Trading's Iron Condor Factory, hosted on our servers for 5 friends"*. Replace with: *"The MVP is Tiger Trading's Iron Condor Factory, packaged for friends to self-deploy on their own VPS"*
   - Remove from success criteria: *"5 friends open Tiger accounts and give us API credentials"*
   - Replace with: *"5 friends open Tiger accounts, deploy the bot on their own VPS, and run with real capital"*
+- Remove the **"What changed" line 24**: *"~~CLI self-hosted~~ → We host everything (friends are layman, computers not always on)"*. Replace with: *"~~CLI self-hosted~~ → Friends self-deploy on Vultr VPS with guided script"*
+- Core Feature Set table (line 40): Remove *"Per-user config file on our server"*. Replace with: *"Per-user config file on friend's own VPS"*
 - Rewrite **"What the User Experience Looks Like"** section to match credential sovereignty:
   - Friend opens Tiger account and gets API key (unchanged)
   - Friend spins up their own Vultr VPS (~$6/month)
@@ -55,18 +61,64 @@
 - Update the delivery model table: Phase 1 row from "founder deploys" → "Friend self-deploys with founder guidance"
 - Update the delivery model table: Phase 2 row from "Tauri desktop app, user installs" → "Web dashboard (FastAPI + React), user accesses via browser"
 - Update the pricing table (line 53): Change *"Self-service Tauri app"* → *"Self-service web dashboard"*
-- Rewrite the Phase 2 recommendation narrative (lines 127-131): Remove *"User installs a simple desktop app (Tauri/Electron). App holds keys locally, runs the trading engine. Connects to our cloud for: dashboard, config UI, monitoring, alerts."* Replace with: *"User deploys web dashboard on their VPS (FastAPI + React). Dashboard accessed via browser at localhost or custom domain. Keys stay on user's VPS. No desktop app installation required."*
+- Rewrite the Phase 2 recommendation narrative (lines 127-131): Remove *"User installs a simple desktop app (Tauri/Electron). App holds keys locally, runs the trading engine. Connects to our cloud for: dashboard, config UI, monitoring, alerts."* and *"Requires user to have an always-on machine (or we offer hosted option with encrypted key storage + disclaimers)"*. Replace with: *"User deploys web dashboard on their VPS (FastAPI + React). Dashboard accessed via browser at localhost or custom domain. Keys stay on user's VPS. No desktop app installation required."*
+- Update open question (line 146): *"Can we legally hold customer broker API keys in Singapore?"* → Mark as resolved: *"Resolved: we do not hold keys. Credential sovereignty model — users deploy on their own infrastructure."*
 
 ### 1.4 Doc 12 — Roadmap
 
-**Problem**: Phase 2 description still references Tauri desktop app. Phase 1 "Per-friend delivery" section contradicts credential sovereignty.
+**Problem**: Phase 2 description still references Tauri desktop app. Phase 1 "Per-friend delivery" section contradicts credential sovereignty. Phase 1 heading uses "Bespoke Consulting" which is a regulatory risk term (Doc 11 says consulting = financial advisory = license required).
 
 **Changes**:
+- Phase 1 heading (line 19): *"Phase 1: Bespoke Consulting (Month 1-3)"* → *"Phase 1: Friends Validation (Month 1-3)"*
 - Line 70: *"Build the Tauri desktop app"* → *"Build the web dashboard (FastAPI + React)"*
 - Lines 74-76: Remove Tauri packaging (.dmg, .msi), auto-updater references. Replace with: Nginx + systemd deployment, deploy script, browser-based access
 - Phase 1 per-friend delivery (lines 37-38): Remove *"We handle the technical deployment (Vultr VPS setup, Python, cron, Telegram)"* and *"Configure Tiger API credentials on their VPS"*. Replace with: *"Friend runs deploy.sh on their own VPS. Founder provides remote guidance (screen share / Telegram) but never touches credentials."*
 - Phase 1 infrastructure (lines 53-55): Remove *"We set it up via SSH — they never touch it"*. Replace with: *"Friend deploys using guided script — founder provides support but never SSH-es into their VPS"*
 - Phase 2 user experience (lines 77-84): Rewrite *"Download NODEBLE app (Mac or Windows)"* and the desktop-app-centric flow to describe the web dashboard deployment: *"Deploy NODEBLE on their VPS using deploy.sh. Access dashboard via browser. First-run wizard in browser: enter Tiger API credentials, pick a template, start paper trading."*
+
+### 1.5 Doc 00 — Home
+
+**Problem**: Navigation section references Tauri.
+
+**Changes**:
+- Line 54: *"[[07 - Technology Stack]] — Tauri + React + Python FastAPI"* → *"[[07 - Technology Stack]] — Web (FastAPI + React)"*
+
+### 1.6 Doc 04 — Product Vision
+
+**Problem**: Contains Tauri references in pricing tiers and positioning language ("personalised strategy design," "bespoke") that contradicts Doc 11 regulatory requirements.
+
+**Changes**:
+- Line 70: Remove *"Desktop app (Tauri) with strategy templates"*. Replace with: *"Web dashboard with strategy templates"*
+- Line 60: Remove *"Personalised (we help design your strategy)"* from competitive comparison table. Replace with: *"Config-driven (templates + user-adjustable parameters)"*
+- Update positioning language throughout: replace "personalised trading automation" with "configurable trading automation" to stay on the "software tool" side of the regulatory line (per Doc 11, Path A)
+
+### 1.7 Doc 07 — Technology Stack
+
+**Problem**: Contains extensive stale Tauri content comparable to Doc 05 — including a "Tauri Desktop App + Python Engine" heading with full diagram, Phase 2 descriptions referencing Tauri packaging, CI/CD referencing desktop app builds, and open technical questions about Tauri/embedded Python.
+
+**Changes**:
+- Section heading (line 15): *"Recommended Architecture: Tauri Desktop App + Python Engine"* → *"Recommended Architecture: Web Dashboard + Python Engine"*
+- Replace the Tauri architecture diagram (lines 17-47) with a web-architecture diagram: Browser → Nginx → FastAPI + React
+- Line 109 (CI/CD): *"Build + sign + release desktop app"* → *"Build frontend assets, run tests"*
+- Phase 2b section (lines 169-171): Remove Tauri scaffold/bundler references. Replace with: React + Vite frontend build, served by Nginx
+- Phase 2c section (lines 177-178): Remove *"Tauri bundler: .dmg (Mac), .msi (Windows)"* and *"Auto-updater"*. Replace with: *"Nginx + systemd deployment script"* and *"Updates via git pull + restart"*
+- Open Technical Questions (lines 188-189): Remove questions about embedding Python in Tauri. Replace with web deployment questions (e.g., HTTPS/TLS for VPS dashboard access)
+
+### 1.8 Doc 10 — Competitive Landscape
+
+**Problem**: Positioning statement and competitive comparison use "personalised strategy design" and "bespoke" as differentiators. Doc 11 explicitly states personalised strategy design requires an FA license under MAS regulations.
+
+**Changes**:
+- Line 102: Competitive comparison *"Personalised strategy design: Yes"* → *"Config-driven templates: Yes"*
+- Lines 110-112: Rewrite positioning statement. Remove: *"we design your strategy with you"* and *"bespoke strategy design."* Replace with language about configurable templates, battle-tested strategies, and bilingual support. The differentiator is the tool's quality and options-native design, not personalised advice.
+- Line 121: Remove *"Our personalisation + consulting model is different"*. Replace with: *"Our options-native templates + bilingual support + multi-broker capability is different"*
+
+### 1.9 Doc 15 — Implementation Sessions
+
+**Problem**: Session 12 description still has founder-configures-credentials language that contradicts Doc 16's corrected version.
+
+**Changes**:
+- Session 12 (line 57): Remove *"Spin up a Vultr VPS for one friend. Run the deploy script. Configure their Tiger API credentials + Telegram."* Replace with: *"Friend spins up their own Vultr VPS. Friend runs deploy.sh themselves, enters their own Tiger API key + Telegram token. Founder provides remote guidance but never touches credentials."*
 
 ---
 
@@ -94,7 +146,7 @@ Four sessions inserted into Phase 1 to fill identified gaps. Slotted by dependen
 
 **Deliverable**: A list of every file/function that needs modification beyond import paths, with revised effort estimates. Go/no-go recommendation for extraction vs wrapping. May change scope of Sessions 3-7.
 
-**Estimated time**: 2-3 hours
+**Estimated time**: 3-5 hours
 
 ### 2.2 Session 7.5: Test Migration & Dry-Run Safety
 
@@ -121,10 +173,12 @@ Four sessions inserted into Phase 1 to fill identified gaps. Slotted by dependen
   - `test_mock_broker_never_calls_sdk`: Prove MockBroker.place_option_order() never touches tigeropen
   - `test_executor_dry_run_guard`: Prove executor with `dry_run=True` skips all order placement even with a real broker instance
   - `test_full_scan_dry_run`: Run complete scan cycle in dry-run, verify zero orders placed via broker call log
+  - `test_rollback_on_partial_fill`: Simulate leg 3 failure during IC execution. Verify legs 1 and 2 are rolled back (close orders placed via MockBroker). This is critical — a failed rollback leaves the user with naked option legs.
+- **If Session 1.5 reveals structural changes to the executor**, revisit the dry-run guard design before starting this session.
 
-**Deliverable**: All ported tests pass. Dry-run safety proven by explicit tests.
+**Deliverable**: All ported tests pass. Dry-run safety proven by explicit tests. Rollback path verified.
 
-**Estimated time**: 4-6 hours
+**Estimated time**: 5-7 hours
 
 ### 2.3 Session 11.5: Operations Setup
 
@@ -142,13 +196,15 @@ Four sessions inserted into Phase 1 to fill identified gaps. Slotted by dependen
 
 **Update mechanism**:
 - Ensure `config/`, `data/`, and all credential files are in `.gitignore` so `git pull` never overwrites local config or state
-- Write `update.sh` that lives on each VPS: `git pull && pip install -e . && systemctl restart nodeble`
+- Write `update.sh` that lives on each VPS: `git pull && pip install -e . && python -m nodeble --validate-config && systemctl restart nodeble`
 - `update.sh` must verify that `config/broker.yaml` and `config/strategy.yaml` still exist after pull (sanity check)
+- The `--validate-config` step checks that all required config fields are present and within sane bounds BEFORE restarting. If validation fails, the update aborts and the old version keeps running. This prevents a config schema change from crashing the bot on restart.
 - When founder pushes a fix, tells friend via Telegram: "Run `bash update.sh`"
 - No automatic updates — friend controls when their instance updates
 
 **Startup reconciliation**:
 - On process start (before first scan/manage), compare local state file positions against broker positions via `broker.get_positions(sec_type="OPT")` (Phase 1 uses JSON state files; Phase 2 migrates to SQLite)
+- Reconciliation must complete BEFORE the first scan/manage cycle runs — not in parallel
 - Log any discrepancies: positions in state but not in broker (phantom), positions in broker but not in state (untracked)
 - Do NOT auto-fix — send discrepancy report via Telegram and continue
 - Founder + friend decide manually how to handle
@@ -158,15 +214,16 @@ Four sessions inserted into Phase 1 to fill identified gaps. Slotted by dependen
 - If retry also fails: send Telegram alert with error details, skip this cycle
 - Do NOT leave open positions unmonitored silently — the alert is mandatory
 - If Tiger API fails during scan (no open legs yet): simply skip scan, alert, no harm done
+- **Escalation**: Track consecutive manage-cycle failures. After 3 consecutive failures with open positions, send a HIGH-PRIORITY alert with explicit instruction: "Tiger API has been unreachable for 3 cycles. CHECK YOUR POSITIONS IN TIGER TRADE APP NOW."
 
 **Log rotation**:
 - Configure `logrotate` for the nodeble log directory (daily rotation, keep 7 days, compress)
 - A $6/month Vultr VPS has limited disk — logs from months of scan/manage cycles will accumulate without rotation
 - Add to `deploy.sh`: create `/etc/logrotate.d/nodeble` config
 
-**Deliverable**: Health monitoring pings working, `update.sh` tested on a test VPS (with `.gitignore` verification), startup reconciliation logs discrepancies, API failure retry + alert working, log rotation configured.
+**Deliverable**: Health monitoring pings working, `update.sh` tested on a test VPS (with `.gitignore` verification and config validation), startup reconciliation logs discrepancies (runs before first cycle), API failure retry + alert + escalation working, log rotation configured.
 
-**Estimated time**: 6-8 hours
+**Estimated time**: 8-10 hours
 
 ### 2.4 Session 12.5: Emergency Runbook
 
@@ -211,9 +268,20 @@ Four sessions inserted into Phase 1 to fill identified gaps. Slotted by dependen
 - Send `/kill off` to re-enable trading
 - Verify with `/status` that the bot can connect
 
-**Deliverable**: A 1-2 page `docs/emergency-runbook.md` in plain English (with Chinese translation in `docs/emergency-runbook-zh.md` or bilingual inline).
+**Scenario 7: Tiger closed your position (margin call / forced liquidation)**
+- What happened: Your account dropped below margin requirements and Tiger force-closed some positions. The bot's state file still shows those positions as "open."
+- What you'll see: The startup reconciliation will detect the mismatch and send a Telegram alert showing positions in state but not at broker.
+- What to do: Contact founder. The state file needs to be manually updated to mark the force-closed positions as "closed_forced." Do NOT restart the bot until this is resolved — it may try to manage positions that no longer exist.
 
-**Estimated time**: 3-5 hours
+**Scenario 8: deploy.sh or setup fails**
+- Python version mismatch: Run `python3 --version` — must be 3.12+. If lower, run `sudo apt install python3.12 python3.12-venv`
+- pip install fails: Check internet connectivity (`curl https://pypi.org`). Try `pip install --no-cache-dir -e .`
+- systemd won't start: Run `sudo journalctl -u nodeble -n 50` to see error logs. Common cause: config file missing (deploy.sh didn't finish)
+- Can't connect to Tiger API: Check that your private key file path in `config/broker.yaml` is correct and the file exists
+
+**Deliverable**: A 2-3 page `docs/emergency-runbook.md` in plain English (with Chinese translation in `docs/emergency-runbook-zh.md` or bilingual inline).
+
+**Estimated time**: 4-6 hours
 
 ### Updated Phase 1 Dependency Chain
 
@@ -245,13 +313,13 @@ Session 6 (data layer) --/                                      |
 | Sessions | Hours (original) | Hours (revised) |
 |----------|-----------------|-----------------|
 | 1-12 (original) | ~40-60h | ~40-60h (unchanged) |
-| 1.5 Extraction spike | — | 2-3h |
-| 7.5 Test migration + dry-run | — | 4-6h |
-| 11.5 Operations setup | — | 6-8h |
-| 12.5 Emergency runbook | — | 3-5h |
-| **Total Phase 1** | **~40-60h** | **~55-82h** |
+| 1.5 Extraction spike | — | 3-5h |
+| 7.5 Test migration + dry-run + rollback | — | 5-7h |
+| 11.5 Operations setup | — | 8-10h |
+| 12.5 Emergency runbook | — | 4-6h |
+| **Total Phase 1** | **~40-60h** | **~60-88h** |
 
-Added ~15-22 hours. This extends Phase 1 by roughly 1-2 weeks part-time but significantly reduces the risk of going live with untested extraction, unverified dry-run safety, and no operations tooling.
+Added ~20-28 hours. This extends Phase 1 by roughly 2-3 weeks part-time but significantly reduces the risk of going live with untested extraction, unverified dry-run safety, and no operations tooling.
 
 ---
 
@@ -259,17 +327,20 @@ Added ~15-22 hours. This extends Phase 1 by roughly 1-2 weeks part-time but sign
 
 New section in MVP Definition — the gate between "code works" and "friend goes live with real money."
 
-**All 6 checks must pass before switching any friend from dry-run to live trading.**
+**All 10 checks must pass before switching any friend from dry-run to live trading.**
 
-**Ownership**: The founder runs all checks on the first friend's VPS (with the friend present via screen share). Results are recorded in a simple checklist file (`docs/preflight-log-{friend_name}.md`) with pass/fail and date for each check. If any check fails, the failure is diagnosed and fixed before re-running that check. No friend goes live until all 6 pass.
+**Ownership**: The founder runs all checks on the first friend's VPS (with the friend present via screen share). Results are recorded in a simple checklist file (`docs/preflight-log-{friend_name}.md`) with pass/fail and date for each check. If any check fails, the failure is diagnosed and fixed before re-running that check. No friend goes live until all 10 pass.
+
+For friends 2-5: after the first friend validates the process, the checklist can be partially self-administered by the friend (Checks 5, 6, 9, 10 are straightforward). Checks 1-4 and 7-8 require founder involvement via screen share. The founder reviews the completed `preflight-log` for each friend before authorizing live trading.
 
 ### Check 1: Dry-run isolation verified
 Run full scan cycle with `--dry-run`. Confirm via test AND log audit that zero `place_option_order` / `place_option_market_order` calls reach the Tiger SDK. Both layers must be proven working: MockBroker swap AND executor dry_run guard.
 
 ### Check 2: Crash recovery tested
-Kill the process mid-execution (after leg 2 fills, before leg 3). Restart. Verify:
+Test against MockBroker with artificial delays between legs (e.g., 5-second sleep per leg) to create a window for kill. Kill the process mid-execution (after leg 2 fills, before leg 3). Restart. Verify:
 - State file reflects the 2 filled legs correctly
 - Next manage cycle detects the orphaned legs via `verify_pending_fills()`
+- Rollback is attempted for the partial position (close orders placed for legs 1-2)
 - `credit_counted` flag prevents double-counting the partial credit
 - Telegram alert fires about the incomplete position
 
@@ -301,6 +372,33 @@ Before going live, run 5 consecutive scan + manage cycles in dry-run on the frie
 - Health check pings fire to healthchecks.io
 - No errors in systemd journal (`journalctl -u nodeble`)
 
+### Check 7: Config sanity validation
+Review the friend's `config/strategy.yaml` for dangerous values. Verify:
+- `contracts` (max per position) is within sane bounds (e.g., 1-5 for a $20-50K account, never >10)
+- `max_open_condors` is reasonable for account size
+- `cash_floor` is set appropriately (at least $10K)
+- `wing_width` × `contracts` × 100 does not exceed a significant percentage of NLV
+- Run `python -m nodeble --validate-config` and confirm it passes with no warnings
+
+### Check 8: Account identity verified
+Run `broker.get_managed_accounts()` or equivalent from the deployed VPS. Verify:
+- The Tiger account number returned matches the account number in `config/broker.yaml`
+- The NLV (net liquidation value) is plausible for the friend's account
+- This prevents a misconfigured bot from trading on the wrong account
+
+### Check 9: Timezone and market hours verified
+From the deployed VPS, verify:
+- `date` command shows the correct time (VPS may default to UTC)
+- The bot correctly identifies whether the US market is currently open or closed
+- Run a dry-run scan outside market hours — verify it correctly skips or handles the closed-market case
+- Run a dry-run scan during market hours — verify it proceeds normally
+
+### Check 10: Sufficient capital verified
+From the deployed VPS, run a status check. Verify:
+- `cash_available` exceeds `cash_floor` + estimated margin for at least one iron condor
+- If `cash_available` is below the threshold, the friend knows they need to fund the account further before going live
+- The bot's risk checks would correctly prevent trading in an underfunded account (verify by temporarily setting cash_floor above available cash)
+
 ---
 
 ## 4. What This Design Does NOT Change
@@ -316,13 +414,15 @@ Before going live, run 5 consecutive scan + manage cycles in dry-run on the frie
 
 ## 5. Implementation Order
 
-1. Fix contradictions in Docs 05, 06, 09, 12 (can be done in one pass)
+1. Fix contradictions in Docs 00, 04, 05, 06, 07, 09, 10, 12, 15 (can be done in one pass — mostly search-and-replace for Tauri→web, founder-deploys→friend-self-deploys, personalised→configurable)
 2. Add Session 1.5, 7.5, 11.5, 12.5 to Doc 15 (Implementation Sessions)
-3. Add pre-flight checklist to Doc 06
+3. Add pre-flight checklist (10 checks) to Doc 06
 4. Update Doc 16 (Session Plan for Audit) with revised dependency chain and effort estimates
 
 ---
 
-## 6. Note on Phase 1 Web Dashboard
+## 6. Notes
 
-Phase 1 friends interact via Telegram only — there is no web dashboard in Phase 1. The web deployment architecture described in the Doc 05 fix (Section 1.1) applies to Phase 2. In Phase 1, the FastAPI backend runs headless with systemd; the only user interface is Telegram. This should be stated explicitly in Doc 05's new "Web Deployment" section to prevent confusion.
+**Phase 1 vs Phase 2 architecture**: Phase 1 friends interact via Telegram only — there is no web dashboard in Phase 1. In Phase 1, the Python trading engine runs headless with systemd; the only user interface is Telegram. No FastAPI, no Nginx, no React. Phase 2 adds the FastAPI API layer + Nginx + React dashboard. Doc 05's architecture should clearly label both modes: "Phase 1: Headless (systemd + Telegram)" and "Phase 2: Web Dashboard (Nginx + FastAPI + React)."
+
+**VPS cost**: Documents inconsistently reference $6/month and $12/month for Vultr VPS. Standardize on the Vultr "Cloud Compute" tier actually needed: 1 vCPU, 1-2GB RAM. Check current Vultr pricing and use a single consistent figure across all docs. The Python trading engine (no frontend in Phase 1) should run fine on the smallest tier.
