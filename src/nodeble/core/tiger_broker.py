@@ -11,78 +11,49 @@ Tiger Broker API 封装
 - 查询订单状态
 """
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
-
-import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def load_config(config_path: str = "config/tiger.yaml") -> dict:
-    """加载配置文件，找不到时给出友好提示"""
-    path = Path(config_path)
-    if not path.exists():
-        print(f"❌ 配置文件不存在: {path.resolve()}")
-        print(f"   请先复制模板并填入你的 API 信息:")
-        print(f"   cp config/tiger.yaml.example config/tiger.yaml")
-        sys.exit(1)
-
-    with open(path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-
-    # 校验必填字段
-    tiger_cfg = cfg.get("tiger", {})
-    missing = []
-    for key in ("tiger_id", "account", "private_key_path"):
-        if not tiger_cfg.get(key):
-            missing.append(key)
-    if missing:
-        print(f"❌ 配置文件缺少必填字段: {', '.join(missing)}")
-        print(f"   请编辑 {path.resolve()} 填入对应信息")
-        sys.exit(1)
-
-    return cfg
-
-
 class TigerBroker:
-    """Tiger Open API 封装类"""
+    """Tiger Open API wrapper.
 
-    def __init__(self, config_path: str = "config/tiger.yaml"):
-        self.cfg = load_config(config_path)
-        tiger_cfg = self.cfg["tiger"]
+    Accepts a flat config dict with keys:
+        tiger_id, account, private_key_path, sandbox, language
+    """
 
-        # 延迟导入，方便在没装 tigeropen 时也能看到友好报错
+    def __init__(self, config: dict):
+        self.cfg = config
+
         try:
             from tigeropen.tiger_open_config import TigerOpenClientConfig
             from tigeropen.common.util.signature_utils import read_private_key
             from tigeropen.common.consts import Language
         except ImportError:
-            print("❌ 未安装 tigeropen SDK，请先运行:")
-            print("   pip install tigeropen")
-            sys.exit(1)
+            raise RuntimeError("tigeropen SDK not installed. Run: pip install tigeropen")
 
-        # 构建客户端配置
-        is_sandbox = tiger_cfg.get("sandbox", True)
+        # Expand ~ in private key path
+        pk_path = str(Path(config["private_key_path"]).expanduser())
+
+        is_sandbox = config.get("sandbox", False)
         self._client_config = TigerOpenClientConfig(sandbox_debug=is_sandbox)
-        self._client_config.private_key = read_private_key(tiger_cfg["private_key_path"])
-        self._client_config.tiger_id = tiger_cfg["tiger_id"]
-        self._client_config.account = tiger_cfg["account"]
+        self._client_config.private_key = read_private_key(pk_path)
+        self._client_config.tiger_id = config["tiger_id"]
+        self._client_config.account = config["account"]
 
-        # 语言设置
         lang_map = {
             "zh_CN": Language.zh_CN,
             "zh_TW": Language.zh_TW,
             "en_US": Language.en_US,
         }
-        self._client_config.language = lang_map.get(tiger_cfg.get("language", "zh_CN"), Language.zh_CN)
+        self._client_config.language = lang_map.get(config.get("language", "en_US"), Language.en_US)
 
-        # 初始化交易和行情客户端（懒加载）
         self._trade_client = None
         self._quote_client = None
 
-        logger.info(f"TigerBroker 初始化完成 | sandbox={is_sandbox} | account={tiger_cfg['account']}")
+        logger.info(f"TigerBroker initialized | sandbox={is_sandbox} | account={config['account']}")
 
     @property
     def trade_client(self):

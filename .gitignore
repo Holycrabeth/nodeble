@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NODEBLE user data (never commit credentials or state)
+.nodeble/
+
+# Reference projects (large, tracked separately)
+reference/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/

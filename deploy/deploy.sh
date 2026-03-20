@@ -134,12 +134,26 @@ else
     echo "Then re-run: .venv/bin/python -m nodeble --test-broker"
 fi
 
-# 8. Install cron jobs
+# 8. Set timezone to US Eastern (cron jobs run on ET schedule)
+echo ""
+CURRENT_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || echo "unknown")
+if [ "$CURRENT_TZ" != "America/New_York" ]; then
+    echo "VPS timezone is $CURRENT_TZ. Cron jobs need US Eastern time."
+    read -p "Set timezone to America/New_York? [Y/n]: " SET_TZ
+    if [ "$SET_TZ" != "n" ] && [ "$SET_TZ" != "N" ]; then
+        sudo timedatectl set-timezone America/New_York
+        echo "Timezone set to America/New_York"
+    else
+        echo "WARNING: Cron times are in ET. Adjust manually if your VPS uses a different timezone."
+    fi
+fi
+
+# 9. Install cron jobs
 echo ""
 echo "Installing cron jobs..."
 # Remove existing nodeble crons
 crontab -l 2>/dev/null | grep -v "nodeble" > /tmp/crontab_clean || true
-# Add scan + manage crons (adjust timezone as needed)
+# Add scan + manage crons (ET times)
 cat >> /tmp/crontab_clean << CRON
 # NODEBLE scan — weekdays 10:00 AM ET
 0 10 * * 1-5 cd $NODEBLE_DIR && .venv/bin/python -m nodeble --mode scan >> $NODEBLE_DATA/logs/cron.log 2>&1
@@ -151,7 +165,7 @@ crontab /tmp/crontab_clean
 rm /tmp/crontab_clean
 echo "Cron jobs installed."
 
-# 9. Run first dry-run
+# 10. Run first dry-run
 echo ""
 echo "Running first dry-run scan..."
 .venv/bin/python -m nodeble --mode scan --dry-run --force
