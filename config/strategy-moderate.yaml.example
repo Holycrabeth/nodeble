@@ -45,3 +45,7 @@ sizing:
     - {max_price: 200, width: 5}
     - {max_price: 500, width: 10}
     - {max_price: 999999, width: 15}
+
+# Health monitoring (optional)
+# Create a check at https://healthchecks.io and paste the ping URL here
+# health_check_url: "https://hc-ping.com/YOUR-UUID-HERE"

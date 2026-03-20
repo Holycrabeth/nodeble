@@ -63,6 +63,19 @@ def load_broker():
         return None
 
 
+def _ping_health_check(strategy_cfg: dict):
+    """Ping healthchecks.io to confirm bot is running. Fire-and-forget."""
+    url = strategy_cfg.get("health_check_url")
+    if not url:
+        return
+    try:
+        import requests
+        requests.get(url, timeout=5)
+        logger.debug(f"Health check pinged: {url}")
+    except Exception as e:
+        logger.warning(f"Health check ping failed (non-blocking): {e}")
+
+
 def load_notifier():
     try:
         from nodeble.notify.telegram import TelegramNotifier
@@ -225,6 +238,9 @@ def main():
     out_dir = signals_dir if args.mode == "scan" else exec_dir
     out_path = out_dir / f"{args.mode}_{today}.json"
     out_path.write_text(json.dumps(results, default=str, indent=2))
+
+    # Ping health check (fire-and-forget, never blocks trading)
+    _ping_health_check(strategy_cfg)
 
     # Summary
     print(f"\n{'='*40}")
