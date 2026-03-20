@@ -1,0 +1,14 @@
+# NODEBLE Risk Controls
+# All safety gates are fail-closed: any error = don't trade
+
+risk:
+  kill_switch: false
+  min_cash_floor: 20000
+  max_concurrent_spreads: 8
+  max_spreads_per_symbol: 2
+  max_daily_orders: 10
+  max_daily_loss: 1500
+  max_total_exposure: 20000
+  max_portfolio_delta: 200
+  circuit_breaker:
+    enabled: true

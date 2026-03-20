@@ -1,0 +1,49 @@
+# NODEBLE Iron Condor Strategy — Aggressive Template
+
+mode: dry_run
+
+watchlist:
+  - SPY
+  - QQQ
+  - IWM
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+
+selection:
+  min_iv_rank: 0.25
+  min_iv_rv_ratio: 0
+  put_delta_min: 0.10
+  put_delta_max: 0.25
+  call_delta_min: 0.10
+  call_delta_max: 0.25
+  min_open_interest: 50
+  max_spread_pct: 0.15
+  min_credit_pct: 0.20
+  dte_min: 14
+  dte_max: 45
+  dte_ideal: 25
+  prefer_monthly: true
+  earnings_blackout_days: 7
+  cooldown_days: 0
+  max_new_positions_per_run: 3
+  price_guard_pct: 0.03
+  delta_range: [0.10, 0.25]
+  max_risk_per_trade: 5000
+
+management:
+  max_risk_per_trade: 5000
+  profit_take_pct: 0.50
+  stop_loss_pct: 2.0
+  close_before_dte: 1
+
+execution:
+  allow_degradation: false
+  fill_timeout_sec: 30
+
+sizing:
+  spread_width_rules:
+    - {max_price: 200, width: 5}
+    - {max_price: 500, width: 10}
+    - {max_price: 999999, width: 15}

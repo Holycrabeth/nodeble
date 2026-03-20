@@ -1,0 +1,46 @@
+# NODEBLE Iron Condor Strategy — Conservative Template
+# Designed for accounts $20-50K. Lower risk, fewer trades.
+
+mode: dry_run  # Change to "live" after pre-flight checklist passes
+
+watchlist:
+  - SPY
+  - QQQ
+  - IWM
+
+selection:
+  min_iv_rank: 0.35
+  min_iv_rv_ratio: 0
+  put_delta_min: 0.08
+  put_delta_max: 0.15
+  call_delta_min: 0.08
+  call_delta_max: 0.15
+  min_open_interest: 100
+  max_spread_pct: 0.10
+  min_credit_pct: 0.25
+  dte_min: 30
+  dte_max: 45
+  dte_ideal: 35
+  prefer_monthly: true
+  earnings_blackout_days: 10
+  cooldown_days: 5
+  max_new_positions_per_run: 1
+  price_guard_pct: 0.03
+  delta_range: [0.08, 0.15]
+  max_risk_per_trade: 2000
+
+management:
+  max_risk_per_trade: 2000
+  profit_take_pct: 0.50
+  stop_loss_pct: 2.0
+  close_before_dte: 3
+
+execution:
+  allow_degradation: false
+  fill_timeout_sec: 30
+
+sizing:
+  spread_width_rules:
+    - {max_price: 200, width: 5}
+    - {max_price: 500, width: 10}
+    - {max_price: 999999, width: 15}

@@ -1,0 +1,8 @@
+# Tiger Brokers API credentials
+# Keep this file secure — chmod 600
+
+tiger_id: "YOUR_TIGER_ID"
+account: "YOUR_ACCOUNT_NUMBER"
+private_key_path: "~/.nodeble/config/tiger_private_key.pem"
+sandbox: false
+language: "en_US"
