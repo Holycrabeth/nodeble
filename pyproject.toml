@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nodeble"
+version = "0.1.0"
+description = "Iron Condor trading automation"
+requires-python = ">=3.12"
+dependencies = [
+    "tigeropen",
+    "pyyaml",
+    "yfinance",
+    "pandas",
+    "numpy",
+    "pyarrow",
+    "pandas-market-calendars",
+    "requests",
+    "python-telegram-bot",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nodeble"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
