@@ -17,6 +17,8 @@ dependencies = [
     "pandas-market-calendars",
     "requests",
     "python-telegram-bot",
+    "scipy",
+    "scikit-learn",
 ]
 
 [project.optional-dependencies]
