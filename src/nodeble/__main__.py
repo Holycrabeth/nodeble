@@ -257,19 +257,16 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    # Load configs
-    strategy_cfg = load_config("strategy.yaml")
-
-    # Signal mode — runs independently, no broker/state needed
-    if args.mode == "signal":
-        notifier = load_notifier()
-        run_signal(notifier, strategy_cfg)
-        _ping_health_check(strategy_cfg)
-        return
-
-    # Backtest mode — runs independently
+    # Backtest mode — can run without deployed config
     if args.mode == "backtest":
         from nodeble.backtest.runner import run_backtest
+        # Try to load strategy config, but don't require it for backtest
+        config_path = get_config_dir() / "strategy.yaml"
+        if config_path.exists():
+            strategy_cfg = yaml.safe_load(config_path.read_text())
+        else:
+            logger.info("No deployed strategy.yaml found, using defaults for backtest")
+            strategy_cfg = {}
         symbols = [s.strip() for s in args.symbols.split(",")]
         run_backtest(
             symbols=symbols,
@@ -279,6 +276,16 @@ def main():
             do_analyze=args.analyze,
             strategy_cfg=strategy_cfg,
         )
+        return
+
+    # Load configs (required for scan/manage/signal modes)
+    strategy_cfg = load_config("strategy.yaml")
+
+    # Signal mode — runs independently, no broker/state needed
+    if args.mode == "signal":
+        notifier = load_notifier()
+        run_signal(notifier, strategy_cfg)
+        _ping_health_check(strategy_cfg)
         return
 
     risk_cfg = options_risk.load_risk_config(str(get_config_dir() / "risk.yaml"))
