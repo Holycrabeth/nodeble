@@ -235,11 +235,16 @@ def _apply_adaptive_params(strategy_cfg, notifier):
 
 def main():
     parser = argparse.ArgumentParser(description="NODEBLE Iron Condor Automation")
-    parser.add_argument("--mode", choices=["scan", "manage", "signal"], help="Run mode")
+    parser.add_argument("--mode", choices=["scan", "manage", "signal", "backtest"], help="Run mode")
     parser.add_argument("--dry-run", action="store_true", help="Simulate without placing orders")
     parser.add_argument("--force", action="store_true", help="Bypass dedup guard")
     parser.add_argument("--test-broker", action="store_true", help="Test broker connection")
     parser.add_argument("--validate-config", action="store_true", help="Validate config files")
+    parser.add_argument("--sweep", action="store_true", help="Run parameter sweep (backtest)")
+    parser.add_argument("--analyze", action="store_true", help="Run feature importance (backtest)")
+    parser.add_argument("--symbols", default="SPY,QQQ,IWM", help="Symbols for backtest")
+    parser.add_argument("--years", type=int, default=5, help="Years of history (backtest)")
+    parser.add_argument("--force-fetch", action="store_true", help="Re-download data (backtest)")
     args = parser.parse_args()
 
     setup_logging()
@@ -260,6 +265,20 @@ def main():
         notifier = load_notifier()
         run_signal(notifier, strategy_cfg)
         _ping_health_check(strategy_cfg)
+        return
+
+    # Backtest mode — runs independently
+    if args.mode == "backtest":
+        from nodeble.backtest.runner import run_backtest
+        symbols = [s.strip() for s in args.symbols.split(",")]
+        run_backtest(
+            symbols=symbols,
+            years=args.years,
+            force_fetch=args.force_fetch,
+            do_sweep=args.sweep,
+            do_analyze=args.analyze,
+            strategy_cfg=strategy_cfg,
+        )
         return
 
     risk_cfg = options_risk.load_risk_config(str(get_config_dir() / "risk.yaml"))
