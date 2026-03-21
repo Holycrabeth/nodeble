@@ -144,12 +144,13 @@ def run_scan(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_ru
     return results
 
 
-def run_manage(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_run):
+def run_manage(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_run, vix=None):
     cleanup_stale_orders(broker=broker, state=state)
     verify_pending_fills(broker=broker, state=state)
 
     actions = evaluate_positions(
         state=state, broker=broker, strategy_cfg=strategy_cfg,
+        vix=vix,
     )
 
     if not actions:
@@ -204,7 +205,7 @@ def _apply_adaptive_params(strategy_cfg, notifier):
         if notifier:
             notifier.send("WARNING: Signal data unavailable, IC scan using fallback defaults. Check signal job.")
         sel = strategy_cfg.get("selection", {})
-        adjusted = compute_adaptive_params(0.50, None, sel, adaptive_cfg)
+        adjusted = compute_adaptive_params(0.50, None, sel, adaptive_cfg, term_ratio=None)
         strategy_cfg["selection"].update(adjusted)
         logger.info("Adaptive params applied with fallback defaults (no signal data)")
         return
@@ -217,8 +218,9 @@ def _apply_adaptive_params(strategy_cfg, notifier):
         avg_bull_share = 0.50
 
     vix = signal_state.get("vix")
+    term_ratio = signal_state.get("term_ratio")
     sel = strategy_cfg.get("selection", {})
-    adjusted = compute_adaptive_params(avg_bull_share, vix, sel, adaptive_cfg)
+    adjusted = compute_adaptive_params(avg_bull_share, vix, sel, adaptive_cfg, term_ratio=term_ratio)
 
     # Overwrite selection with adjusted values
     strategy_cfg["selection"].update(adjusted)
@@ -301,7 +303,13 @@ def main():
             state.last_scan_date = today
             state.save(state_path)
     else:
-        results = run_manage(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_run)
+        from nodeble.data.vix import get_vix as fetch_manage_vix
+        manage_vix = fetch_manage_vix()
+        if manage_vix is None:
+            logger.warning("VIX unavailable for dynamic profit targets, using defaults")
+            if notifier:
+                notifier.send("WARNING: VIX unavailable for profit targets, using 50% default.")
+        results = run_manage(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_run, vix=manage_vix)
         if not dry_run:
             state.last_manage_date = today
             state.save(state_path)
