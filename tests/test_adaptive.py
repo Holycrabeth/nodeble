@@ -117,3 +117,79 @@ def test_combined_vix_and_skew():
     assert abs(result["call_delta_max"] - 0.28125) < 0.001
     assert result["dte_min"] == 15
     assert result["dte_max"] == 30
+
+
+# --- Term structure tests ---
+
+def test_term_contango_no_change():
+    """term_ratio 0.95 (contango) -> no additional reduction."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=18.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=0.95,
+    )
+    assert abs(result["put_delta_max"] - 0.15) < 0.001
+    assert result["dte_min"] == 12
+    assert result["dte_max"] == 25
+
+
+def test_term_mild_backwardation():
+    """term_ratio 1.03 -> delta x0.90, DTE -15%."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=18.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=1.03,
+    )
+    assert abs(result["put_delta_max"] - 0.135) < 0.001
+    assert result["dte_min"] == 10
+    assert result["dte_max"] == 21
+
+
+def test_term_moderate_backwardation():
+    """term_ratio 1.08 -> delta x0.80, DTE -30%."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=18.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=1.08,
+    )
+    assert abs(result["put_delta_max"] - 0.12) < 0.001
+    assert result["dte_min"] == 8
+    assert result["dte_max"] == 18
+
+
+def test_term_severe_backwardation():
+    """term_ratio 1.15 -> delta x0.65, DTE -50%."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=18.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=1.15,
+    )
+    assert abs(result["put_delta_max"] - 0.0975) < 0.001
+    assert result["dte_min"] == 6
+    assert result["dte_max"] == 12
+
+
+def test_term_ratio_none_no_change():
+    """term_ratio None -> treat as contango, no reduction."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=18.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=None,
+    )
+    assert abs(result["put_delta_max"] - 0.15) < 0.001
+    assert result["dte_min"] == 12
+
+
+def test_term_combined_with_vix_and_skew():
+    """VIX 28 + term_ratio 1.08 + bearish -> all three stack."""
+    result = compute_adaptive_params(
+        bull_share=0.25, vix=28.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=1.08,
+    )
+    assert abs(result["put_delta_max"] - 0.063) < 0.001
+    assert abs(result["call_delta_max"] - 0.105) < 0.001
+
+
+def test_term_dte_floor_at_1():
+    """DTE reduction never goes below 1."""
+    result = compute_adaptive_params(
+        bull_share=0.50, vix=28.0, base_config=BASE_CFG,
+        adaptive_config=ADAPTIVE_CFG, term_ratio=1.15,
+    )
+    assert result["dte_min"] >= 1
+    assert result["dte_max"] >= result["dte_min"]
