@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Registry of all implemented indicators."""
 
+import logging
 import yaml
+
+logger = logging.getLogger(__name__)
 
 from nodeble.signals.trend import SMACross, EMACross, ADXTrend, Supertrend, AroonOscillator
 from nodeble.signals.momentum import RSI, MACDHistogram, StochasticOscillator, CCI, WilliamsR
@@ -211,7 +214,21 @@ def get_all_indicators(config_path: str = None):
     # Volume (5)
     volume = _build_volume_indicators(evo_cfg)
 
-    return trend + momentum + volatility + volume
+    all_indicators = trend + momentum + volatility + volume
+
+    # Apply exclude list from config
+    try:
+        with open(config_path, "r") as f:
+            cfg = yaml.safe_load(f) or {}
+        exclude = cfg.get("exclude_indicators", [])
+        if exclude:
+            before = len(all_indicators)
+            all_indicators = [i for i in all_indicators if i.name not in exclude]
+            logger.info(f"Excluded {before - len(all_indicators)} indicators: {exclude}")
+    except (FileNotFoundError, Exception):
+        pass
+
+    return all_indicators
 
 
 def get_indicators_by_category(category: str):

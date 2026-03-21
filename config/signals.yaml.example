@@ -1,7 +1,7 @@
 # NODEBLE Signal Configuration — Voting thresholds and indicator evolution
 
 voting:
-  implemented_indicators: 20
+  implemented_indicators: 12
   min_active_ratio: 0.35
   min_active_categories: 3
   deadband: 0.06
@@ -10,11 +10,19 @@ voting:
   sell_threshold: 0.58
   strong_sell_threshold: 0.70
 
+# Dropped 8 indicators based on 5-year backtest feature importance analysis (2026-03-21):
+# RSI, EMA cross, Bollinger position, Bollinger width, Donchian, MFI, OBV, Volume SMA ratio
+# All scored < 2% importance for IC outcome prediction
+exclude_indicators:
+  - rsi_14
+  - ema_12_26_cross
+  - bollinger_position
+  - bollinger_width
+  - donchian_channel
+  - mfi_14
+  - obv_trend
+  - volume_sma_ratio
+
 indicator_evolution:
   adaptive_rsi:
-    enabled: true
-    lookback: 252
-    pctile_low: 10.0
-    pctile_high: 90.0
-    floor_low: 20.0
-    ceil_high: 80.0
+    enabled: false  # RSI dropped from IC strategy per backtest results
