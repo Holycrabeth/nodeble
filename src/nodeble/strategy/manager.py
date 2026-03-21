@@ -23,6 +23,32 @@ class SpreadAction:
         self.current_value = current_value
 
 
+def _get_dynamic_profit_target(strategy_cfg: dict, vix: float | None) -> float:
+    """Look up profit target based on current VIX.
+
+    VIX is fetched once in __main__.py and passed in to keep manager side-effect-free.
+    """
+    mgmt = strategy_cfg.get("management", {})
+    dynamic = mgmt.get("dynamic_profit_targets")
+
+    if not dynamic:
+        return mgmt.get("profit_take_pct", 0.50)
+
+    if vix is None:
+        logger.warning("VIX unavailable for dynamic profit target, using 0.50 fallback")
+        return 0.50
+
+    for tier in sorted(dynamic, key=lambda t: t["max_vix"]):
+        if vix <= tier["max_vix"]:
+            logger.info(
+                f"Dynamic profit target: VIX={vix:.1f}, "
+                f"using {tier['profit_take_pct']:.0%} (tier <={tier['max_vix']})"
+            )
+            return tier["profit_take_pct"]
+
+    return 0.50
+
+
 def cleanup_stale_orders(broker, state: SpreadState, dry_run: bool = False) -> list[int]:
     """Cancel unfilled spread leg orders from previous days.
 
@@ -142,13 +168,14 @@ def evaluate_positions(
     state: SpreadState,
     broker,
     strategy_cfg: dict,
+    vix: float | None = None,
 ) -> list[SpreadAction]:
     """Evaluate all open positions for profit/stop/DTE conditions.
 
     Returns list of SpreadAction objects.
     """
     mgmt = strategy_cfg.get("management", {})
-    profit_target_pct = mgmt.get("profit_take_pct", 0.50)
+    profit_target_pct = _get_dynamic_profit_target(strategy_cfg, vix)
     stop_loss_pct = mgmt.get("stop_loss_pct", 2.0)
     close_before_dte = mgmt.get("close_before_dte") or mgmt.get("close_dte_threshold", 1)
 
