@@ -29,6 +29,26 @@ def get_vix() -> float | None:
     return None
 
 
+def get_vix9d() -> float | None:
+    """Fetch current VIX9D (9-day implied vol). Returns None on failure."""
+    try:
+        ticker = yf.Ticker("^VIX9D")
+        try:
+            price = ticker.fast_info.last_price
+            if price and price > 0:
+                return float(price)
+        except Exception:
+            pass
+
+        hist = ticker.history(period="1d")
+        if hist is not None and not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception as e:
+        logger.warning(f"Failed to fetch VIX9D: {e}")
+
+    return None
+
+
 def apply_vix_overrides(base_cfg: dict, vix: float | None, scaling_cfg: dict) -> dict:
     """Apply VIX-tier overrides to a config dict. Returns modified copy."""
     if not scaling_cfg.get("enabled", False):
