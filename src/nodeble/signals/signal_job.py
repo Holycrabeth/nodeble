@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from nodeble.paths import get_data_dir, get_config_dir
 from nodeble.data.fetcher import DataFetcher
-from nodeble.data.vix import get_vix
+from nodeble.data.vix import get_vix, get_vix9d
 from nodeble.signals.registry import get_all_indicators, get_max_warmup
 from nodeble.signals.scorer import VotingEngine, load_voting_config
 
@@ -136,20 +136,42 @@ def run_signal_job(watchlist: list[str], strategy_cfg: dict) -> dict:
     if vix_fallback:
         logger.warning("VIX unavailable — signal state will indicate fallback")
 
+    # Fetch VIX9D for term structure
+    vix9d = get_vix9d()
+    if vix9d is None:
+        logger.warning("VIX9D unavailable — term structure gate disabled for this run")
+
+    term_ratio = None
+    term_structure = "unknown"
+    if vix is not None and vix9d is not None and vix > 0:
+        term_ratio = round(vix9d / vix, 4)
+        if term_ratio <= 1.00:
+            term_structure = "contango"
+        elif term_ratio <= 1.05:
+            term_structure = "mild_backwardation"
+        elif term_ratio <= 1.10:
+            term_structure = "moderate_backwardation"
+        else:
+            term_structure = "severe_backwardation"
+        logger.info(f"Term structure: VIX9D={vix9d:.1f}, VIX={vix:.1f}, ratio={term_ratio:.3f} ({term_structure})")
+
     adaptive_cfg = strategy_cfg.get("adaptive", {})
     vix_tier = _determine_vix_tier(vix, adaptive_cfg)
 
     # Build state
     now = datetime.now(NY)
     state = {
-        "version": 1,
+        "version": 2,
         "generated_at": now.isoformat(),
         "vix": vix,
+        "vix9d": vix9d,
+        "term_ratio": term_ratio,
+        "term_structure": term_structure,
         "vix_tier": vix_tier,
         "vix_fallback": vix_fallback,
         "symbols": symbol_signals,
     }
 
     write_signal_state(state)
-    logger.info(f"Signal state written: {len(symbol_signals)} symbols, VIX={vix}")
+    logger.info(f"Signal state written: {len(symbol_signals)} symbols, VIX={vix}, VIX9D={vix9d}, term={term_structure}")
     return state

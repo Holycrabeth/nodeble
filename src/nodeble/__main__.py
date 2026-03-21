@@ -182,7 +182,9 @@ def run_signal(notifier, strategy_cfg):
     # Telegram summary
     if notifier:
         vix_str = f"VIX {state['vix']:.1f}" if state["vix"] else "VIX unavailable"
-        lines = [f"Signal Update ({vix_str}):"]
+        vix9d_str = f", VIX9D {state.get('vix9d', 0):.1f}" if state.get("vix9d") else ""
+        term_str = f", {state['term_structure']} {state['term_ratio']:.2f}x" if state.get("term_ratio") else ""
+        lines = [f"Signal Update ({vix_str}{vix9d_str}{term_str}):"]
         for sym, sig in state["symbols"].items():
             direction = "bearish" if sig["bull_share"] < 0.45 else "bullish" if sig["bull_share"] > 0.55 else "neutral"
             lines.append(f"{sym}: {direction} (bull {sig['bull_share']:.0%}, {sig['active_count']}/20)")
