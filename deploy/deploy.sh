@@ -100,6 +100,7 @@ esac
 # 6. Write config files
 cp "$NODEBLE_DIR/config/$TEMPLATE" "$NODEBLE_DATA/config/strategy.yaml"
 cp "$NODEBLE_DIR/config/risk.yaml.example" "$NODEBLE_DATA/config/risk.yaml"
+cp "$NODEBLE_DIR/config/signals.yaml.example" "$NODEBLE_DATA/config/signals.yaml"
 
 cat > "$NODEBLE_DATA/config/broker.yaml" << EOF
 tiger_id: "$TIGER_ID"
@@ -153,8 +154,10 @@ echo ""
 echo "Installing cron jobs..."
 # Remove existing nodeble crons
 crontab -l 2>/dev/null | grep -v "nodeble" > /tmp/crontab_clean || true
-# Add scan + manage crons (ET times)
+# Add signal + scan + manage crons (ET times)
 cat >> /tmp/crontab_clean << CRON
+# NODEBLE signal — weekdays 9:30 AM ET
+30 9 * * 1-5 cd $NODEBLE_DIR && .venv/bin/python -m nodeble --mode signal >> $NODEBLE_DATA/logs/cron.log 2>&1
 # NODEBLE scan — weekdays 10:00 AM ET
 0 10 * * 1-5 cd $NODEBLE_DIR && .venv/bin/python -m nodeble --mode scan >> $NODEBLE_DATA/logs/cron.log 2>&1
 # NODEBLE manage — weekdays 10:30 AM and 3:00 PM ET
