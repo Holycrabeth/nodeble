@@ -1,6 +1,7 @@
 """NODEBLE CLI — Iron Condor trading automation.
 
 Usage:
+    python -m nodeble --mode signal [--force]
     python -m nodeble --mode scan [--dry-run] [--force]
     python -m nodeble --mode manage [--dry-run] [--force]
     python -m nodeble --test-broker
@@ -26,6 +27,8 @@ from nodeble.strategy.executor import SpreadExecutor
 from nodeble.strategy.manager import (
     cleanup_stale_orders, verify_pending_fills, evaluate_positions,
 )
+from nodeble.signals.signal_job import run_signal_job, read_signal_state
+from nodeble.strategy.adaptive import compute_adaptive_params
 
 logger = logging.getLogger("nodeble")
 NY = ZoneInfo("America/New_York")
@@ -167,9 +170,68 @@ def run_manage(broker, notifier, state, state_path, risk_cfg, strategy_cfg, dry_
     return results
 
 
+def run_signal(notifier, strategy_cfg):
+    """Run signal generation job and send Telegram summary."""
+    watchlist = strategy_cfg.get("watchlist", [])
+    if not watchlist:
+        logger.warning("Empty watchlist — nothing to signal")
+        return
+
+    state = run_signal_job(watchlist, strategy_cfg)
+
+    # Telegram summary
+    if notifier:
+        vix_str = f"VIX {state['vix']:.1f}" if state["vix"] else "VIX unavailable"
+        lines = [f"Signal Update ({vix_str}):"]
+        for sym, sig in state["symbols"].items():
+            direction = "bearish" if sig["bull_share"] < 0.45 else "bullish" if sig["bull_share"] > 0.55 else "neutral"
+            lines.append(f"{sym}: {direction} (bull {sig['bull_share']:.0%}, {sig['active_count']}/20)")
+        notifier.send("\n".join(lines))
+
+
+def _apply_adaptive_params(strategy_cfg, notifier):
+    """Read signal state and apply adaptive parameters to strategy config."""
+    signal_state = read_signal_state()
+    adaptive_cfg = strategy_cfg.get("adaptive", {})
+
+    if not adaptive_cfg:
+        return
+
+    if signal_state is None:
+        logger.warning("Signal data unavailable, using fallback defaults")
+        if notifier:
+            notifier.send("WARNING: Signal data unavailable, IC scan using fallback defaults. Check signal job.")
+        sel = strategy_cfg.get("selection", {})
+        adjusted = compute_adaptive_params(0.50, None, sel, adaptive_cfg)
+        strategy_cfg["selection"].update(adjusted)
+        logger.info("Adaptive params applied with fallback defaults (no signal data)")
+        return
+
+    # Compute average bull_share across all symbols
+    symbols_data = signal_state.get("symbols", {})
+    if symbols_data:
+        avg_bull_share = sum(s["bull_share"] for s in symbols_data.values()) / len(symbols_data)
+    else:
+        avg_bull_share = 0.50
+
+    vix = signal_state.get("vix")
+    sel = strategy_cfg.get("selection", {})
+    adjusted = compute_adaptive_params(avg_bull_share, vix, sel, adaptive_cfg)
+
+    # Overwrite selection with adjusted values
+    strategy_cfg["selection"].update(adjusted)
+
+    logger.info(
+        f"Adaptive params applied: VIX={vix}, bull_share={avg_bull_share:.2f}, "
+        f"put_delta=[{adjusted['put_delta_min']:.3f}-{adjusted['put_delta_max']:.3f}], "
+        f"call_delta=[{adjusted['call_delta_min']:.3f}-{adjusted['call_delta_max']:.3f}], "
+        f"DTE=[{adjusted['dte_min']}-{adjusted['dte_max']}]"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="NODEBLE Iron Condor Automation")
-    parser.add_argument("--mode", choices=["scan", "manage"], help="Run mode")
+    parser.add_argument("--mode", choices=["scan", "manage", "signal"], help="Run mode")
     parser.add_argument("--dry-run", action="store_true", help="Simulate without placing orders")
     parser.add_argument("--force", action="store_true", help="Bypass dedup guard")
     parser.add_argument("--test-broker", action="store_true", help="Test broker connection")
@@ -187,8 +249,16 @@ def main():
         sys.exit(1)
 
     # Load configs
-    risk_cfg = options_risk.load_risk_config(str(get_config_dir() / "risk.yaml"))
     strategy_cfg = load_config("strategy.yaml")
+
+    # Signal mode — runs independently, no broker/state needed
+    if args.mode == "signal":
+        notifier = load_notifier()
+        run_signal(notifier, strategy_cfg)
+        _ping_health_check(strategy_cfg)
+        return
+
+    risk_cfg = options_risk.load_risk_config(str(get_config_dir() / "risk.yaml"))
 
     # Force dry-run if config says so
     dry_run = args.dry_run
@@ -217,6 +287,10 @@ def main():
     # Init broker + notifier
     broker = None if dry_run else load_broker()
     notifier = load_notifier()
+
+    # Apply adaptive parameters before scan
+    if args.mode == "scan":
+        _apply_adaptive_params(strategy_cfg, notifier)
 
     # Run
     if args.mode == "scan":

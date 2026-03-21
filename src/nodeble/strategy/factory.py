@@ -104,12 +104,7 @@ def scan_for_condors(
         logger.warning("Empty watchlist — nothing to scan")
         return [], rejections
 
-    # VIX scaling — apply tier overrides to selection config
-    from nodeble.data.vix import get_vix, apply_vix_overrides
-    vix_scaling = strategy_cfg.get("vix_scaling", {})
-    if vix_scaling.get("enabled", False):
-        vix = get_vix()
-        sel = apply_vix_overrides(sel, vix, vix_scaling)
+    # VIX scaling is now handled upstream by the adaptive layer in __main__.py
 
     # 1. Batch IV rank screening
     min_iv_rank = sel.get("min_iv_rank", 0.35)
