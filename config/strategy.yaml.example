@@ -31,9 +31,14 @@ selection:
 
 management:
   max_risk_per_trade: 2000
-  profit_take_pct: 0.50
   stop_loss_pct: 2.0
   close_before_dte: 3
+
+  dynamic_profit_targets:
+    - { max_vix: 15,  profit_take_pct: 0.40 }
+    - { max_vix: 20,  profit_take_pct: 0.50 }
+    - { max_vix: 25,  profit_take_pct: 0.60 }
+    - { max_vix: 999, profit_take_pct: 0.75 }
 
 execution:
   allow_degradation: false
@@ -55,6 +60,13 @@ adaptive:
   skew:
     neutral_zone: [0.45, 0.55]
     max_skew_ratio: 0.25
+
+  term_structure:
+    tiers:
+      - { max_ratio: 1.00, delta_multiplier: 1.00, dte_reduction: 0.00 }
+      - { max_ratio: 1.05, delta_multiplier: 0.90, dte_reduction: 0.15 }
+      - { max_ratio: 1.10, delta_multiplier: 0.80, dte_reduction: 0.30 }
+      - { max_ratio: 999,  delta_multiplier: 0.65, dte_reduction: 0.50 }
 
 # Health monitoring (optional)
 # Create a check at https://healthchecks.io and paste the ping URL here
